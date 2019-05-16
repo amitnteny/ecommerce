@@ -1,9 +1,11 @@
 package com.amitnteny.ecommerce.service;
 
+import com.amitnteny.ecommerce.exceptions.ItemOutOfStockException;
 import com.amitnteny.ecommerce.repository.InventoryRepository;
 import com.amitnteny.ecommerce.repository.OrderRepository;
 import com.amitnteny.ecommerce.domain.Order;
 import com.amitnteny.ecommerce.entity.OrderEntity;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -15,6 +17,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class OrderService {
     private OrderRepository orderRepository;
     private InventoryRepository inventoryRepository;
@@ -26,15 +29,19 @@ public class OrderService {
     }
 
     @Transactional(isolation = Isolation.REPEATABLE_READ)
-    public String saveOrder(Order order) {
+    public String createOrder(Order order) {
         Long availableProductCount = inventoryRepository.countByProductId(order.getProductId());
         if (availableProductCount > 0 && availableProductCount >= order.getQuantity()) {
-            OrderEntity entity = getEntityFromOrder(order);
-            orderRepository.save(entity);
+            BigDecimal orderPrice = inventoryRepository.findByProductId(order.getProductId()).get()
+                    .getPrice().multiply(BigDecimal.valueOf(order.getQuantity()));
+            OrderEntity orderEntity = getEntityFromOrder(order);
+            orderEntity.setTotalAmount(orderPrice);
+            OrderEntity placedOrder = orderRepository.save(orderEntity);
             inventoryRepository.updateInventory(order.getProductId(), availableProductCount - order.getQuantity());
-            return "ORDER PLACED SUCCESSFULLY";
+            return "SUCCESS";
         } else {
-            return "QUANTITY ORDERED IS MORE THAN AVAILABLE QUANTITY";
+            log.error("QUANTITY ORDERED IS MORE THAN AVAILABLE QUANTITY");
+            throw new ItemOutOfStockException();
         }
     }
 
@@ -78,9 +85,15 @@ public class OrderService {
                 .accountId(o.getAccountId())
                 .productId(o.getProductId())
                 .quantity(o.getQuantity())
-                .totalAmount(inventoryRepository.findByProductId(o.getProductId()).get().getPrice().multiply(BigDecimal.valueOf(o.getQuantity())))
                 .description(o.getDescription())
                 .timestamp(System.currentTimeMillis())
                 .build();
+    }
+
+    public List<String> createBulkOrders(List<Order> orders) {
+        List<String> orderSummary = orders.stream()
+                .map(this::createOrder)
+                .collect(Collectors.toList());
+        return orderSummary;
     }
 }

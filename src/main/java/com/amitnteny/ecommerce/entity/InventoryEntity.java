@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 @Table(name = "INVENTORY")
 public class InventoryEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "PRODUCT_ID")
     private Long productId;
     @Column(name = "AVAILABLE_QUANTITY")
