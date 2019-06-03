@@ -1,19 +1,22 @@
 package com.amitnteny.ecommerce.domain;
 
-import lombok.Builder;
-import lombok.Data;
+import com.amitnteny.ecommerce.enums.OrderStatus;
+import lombok.*;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 
 @Data
 @Builder
+@ToString
+@AllArgsConstructor
+@NoArgsConstructor
 public class Order {
     private Long orderId;
     private Long accountId;
     private Long productId;
     private Long quantity;
     private BigDecimal totalAmount;
+    private OrderStatus orderStatus;
     private String description;
     private Long timestamp;
 }
